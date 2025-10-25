@@ -29,50 +29,74 @@ def process_logs_by_key(unique_key: str):
     if not raw_logs.exists():
         return {"error": f"No logs found for key: {unique_key}"}
 
-    entries = []
-    for raw in raw_logs:
-        parsed = parse_log_line(raw.content)
-        if parsed:
-            entries.append(LogEntry(
-                unique_key=unique_key,
-                ip_address=parsed["ip"],
-                timestamp=parsed["timestamp"],
-                method=parsed["method"],
-                endpoint=parsed["endpoint"],
-                status_code=parsed["status"],
-                response_size=parsed["size"],
-            ))
+    log_entry = LogEntry.objects.filter(unique_key=unique_key)
 
-    LogEntry.objects.bulk_create(entries, ignore_conflicts=True)
+    if not log_entry.exists():
+        entries = []
+        for raw in raw_logs:
+            parsed = parse_log_line(raw.content)
+            if parsed:
+                entries.append(LogEntry(
+                    unique_key=unique_key,
+                    ip_address=parsed["ip"],
+                    timestamp=parsed["timestamp"],
+                    method=parsed["method"],
+                    endpoint=parsed["endpoint"],
+                    status_code=parsed["status"],
+                    response_size=parsed["size"],
+                ))
 
-    # --- Aggregation Metrics ---
-    total = LogEntry.objects.filter(unique_key=unique_key).count()
-    success = LogEntry.objects.filter(unique_key=unique_key, status_code__range=(200, 299)).count()
-    client_err = LogEntry.objects.filter(unique_key=unique_key, status_code__range=(400, 499)).count()
-    server_err = LogEntry.objects.filter(unique_key=unique_key, status_code__range=(500, 599)).count()
-    top_ep = LogEntry.objects.filter(unique_key=unique_key).values("endpoint").annotate(c=Count("id")).order_by("-c").first()
-    top_ip = LogEntry.objects.filter(unique_key=unique_key).values("ip_address").annotate(c=Count("id")).order_by("-c").first()
+        LogEntry.objects.bulk_create(entries, ignore_conflicts=True)
 
-    method_counts_qs = LogEntry.objects.filter(unique_key=unique_key).values("method").annotate(count=Count("id")).order_by("-count")
-    method_counts = {item["method"]: item["count"] for item in method_counts_qs}
+        # --- Aggregation Metrics ---
+        total = LogEntry.objects.filter(unique_key=unique_key).count()
+        success = LogEntry.objects.filter(unique_key=unique_key, status_code__range=(200, 299)).count()
+        client_err = LogEntry.objects.filter(unique_key=unique_key, status_code__range=(400, 499)).count()
+        server_err = LogEntry.objects.filter(unique_key=unique_key, status_code__range=(500, 599)).count()
+        top_ep = LogEntry.objects.filter(unique_key=unique_key).values("endpoint").annotate(c=Count("id")).order_by("-c").first()
+        top_ip = LogEntry.objects.filter(unique_key=unique_key).values("ip_address").annotate(c=Count("id")).order_by("-c").first()
 
-    summary = LogSummary.objects.create(
-        unique_key=unique_key,
-        total_requests=total,
-        success_count=success,
-        client_error_count=client_err,
-        server_error_count=server_err,
-        top_endpoint=top_ep["endpoint"] if top_ep else "",
-        top_ip=top_ip["ip_address"] if top_ip else "",
-    )
+        method_counts_qs = LogEntry.objects.filter(unique_key=unique_key).values("method").annotate(count=Count("id")).order_by("-count")
+        method_counts = {item["method"]: item["count"] for item in method_counts_qs}
 
-    return {
-        "unique_key": unique_key,
-        "total": total,
-        "success": success,
-        "client_error": client_err,
-        "server_error": server_err,
-        "top_endpoint": top_ep["endpoint"] if top_ep else "",
-        "top_ip": top_ip["ip_address"] if top_ip else "",
-        "method_counts": method_counts
-    }
+        summary = LogSummary.objects.create(
+            unique_key=unique_key,
+            total_requests=total,
+            success_count=success,
+            client_error_count=client_err,
+            server_error_count=server_err,
+            top_endpoint=top_ep["endpoint"] if top_ep else "",
+            top_ip=top_ip["ip_address"] if top_ip else "",
+        )
+
+        return {
+            "unique_key": unique_key,
+            "total": total,
+            "success": success,
+            "client_error": client_err,
+            "server_error": server_err,
+            "top_endpoint": top_ep["endpoint"] if top_ep else "",
+            "top_ip": top_ip["ip_address"] if top_ip else "",
+            "method_counts": method_counts
+        }
+    else:
+        total = LogEntry.objects.filter(unique_key=unique_key).count()
+        success = LogEntry.objects.filter(unique_key=unique_key, status_code__range=(200, 299)).count()
+        client_err = LogEntry.objects.filter(unique_key=unique_key, status_code__range=(400, 499)).count()
+        server_err = LogEntry.objects.filter(unique_key=unique_key, status_code__range=(500, 599)).count()
+        top_ep = LogEntry.objects.filter(unique_key=unique_key).values("endpoint").annotate(c=Count("id")).order_by("-c").first()
+        top_ip = LogEntry.objects.filter(unique_key=unique_key).values("ip_address").annotate(c=Count("id")).order_by("-c").first()
+
+        method_counts_qs = LogEntry.objects.filter(unique_key=unique_key).values("method").annotate(count=Count("id")).order_by("-count")
+        method_counts = {item["method"]: item["count"] for item in method_counts_qs}
+
+        return {
+            "unique_key": unique_key,
+            "total": total,
+            "success": success,
+            "client_error": client_err,
+            "server_error": server_err,
+            "top_endpoint": top_ep["endpoint"] if top_ep else "",
+            "top_ip": top_ip["ip_address"] if top_ip else "",
+            "method_counts": method_counts
+        }

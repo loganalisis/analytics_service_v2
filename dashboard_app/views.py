@@ -35,7 +35,7 @@ def get_dashboard(request):
 def get_Log_file(blob_name, url):
 
     account_name = "subhamstoragelogs"
-    # account_key = "lNduVfrpwSM48iJbJNz/PDIxAG39J01lEt/HoWiLxT5/x5cbE6cCw/nZ0WD03NCPHuN/ZCv+ddys+AStNsn0ww=="
+    account_key = "lNduVfrpwSM48iJbJNz/PDIxAG39J01lEt/HoWiLxT5/x5cbE6cCw/nZ0WD03NCPHuN/ZCv+ddys+AStNsn0ww=="
     container_name = "loguploadblob"
     blob_name = blob_name
 
