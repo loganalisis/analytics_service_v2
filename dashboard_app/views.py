@@ -70,9 +70,21 @@ def insert_data(request):
 
     print("Received log data:")
     unique_key = request.data.get("unique_key")
+    # consumer = KafkaConsumer(
+    #     'log_details',
+    #     bootstrap_servers=['localhost:9092'],
+    #     value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+    #     auto_offset_reset='earliest',  # Start reading from the earliest message if no committed offset exists
+    #     enable_auto_commit=True, 
+    # )
+    base_dir = os.path.dirname(__file__)
     consumer = KafkaConsumer(
-        'logs_item_updated.uploaded',
-        bootstrap_servers=['localhost:9092'],
+        'log_details',
+        bootstrap_servers=f"kafka-28c7f468-shubham-20a9.j.aivencloud.com:26262",
+        security_protocol="SSL",
+        ssl_cafile=os.path.join(base_dir, "certs", "ca.pem"),
+        ssl_certfile=os.path.join(base_dir, "certs", "service.cert"),
+        ssl_keyfile=os.path.join(base_dir, "certs", "service.key"),
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),
         auto_offset_reset='earliest',  # Start reading from the earliest message if no committed offset exists
         enable_auto_commit=True, 
